@@ -3,6 +3,7 @@
   "description": "A speculative polyfill to support i18n code translations in Angular",
   "version": "1.0.0",
   "private": false,
+  "main": "lib/public_api.ts",
   "scripts": {
     "prebuild": "del-cli dist",
     "build": "npm run package && npm run build:cli",
