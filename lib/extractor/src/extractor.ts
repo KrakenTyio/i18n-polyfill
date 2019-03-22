@@ -72,6 +72,23 @@ export class ServiceParser extends AbstractAstParser {
       });
     });
 
+    const variableNodes = this._findI18nVariables(this._sourceFile);
+    variableNodes.forEach(varNode => {
+      if (!(varNode.name as ts.Identifier).escapedText) {
+        return;
+      }
+
+      const callNodes = this._findCallNodes(varNode.parent ? varNode.parent : this._sourceFile, (varNode.name as ts.Identifier).escapedText.toString());
+      callNodes.forEach(callNode => {
+        entries.push(...this._getCallArgStrings(callNode));
+      });
+    });
+
+    const callNodes = this._findCallNodes(undefined, "_i18n");
+    callNodes.forEach(callNode => {
+      entries.push(...this._getCallArgStrings(callNode));
+    });
+
     return entries;
   }
 
@@ -101,8 +118,7 @@ export class ServiceParser extends AbstractAstParser {
         return false;
       }
       const className: string = parameterType.text;
-
-      return className === "I18n";
+      return className === "I18n" || className === "_i18n";
     });
 
     if (result) {
@@ -138,6 +154,10 @@ export class ServiceParser extends AbstractAstParser {
    * Find all calls to TranslateService methods
    */
   protected _findCallNodes(node: ts.Node, propertyIdentifier: string): ts.CallExpression[] {
+    if (!node) {
+      node = this._sourceFile;
+    }
+
     let callNodes = this._findNodes(node, ts.SyntaxKind.CallExpression) as ts.CallExpression[];
     callNodes = callNodes.filter(callNode => {
       // Only call expressions with arguments
@@ -149,6 +169,22 @@ export class ServiceParser extends AbstractAstParser {
     });
 
     return callNodes;
+  }
+
+  protected _findI18nVariables(node: ts.Node): ts.VariableDeclaration[] {
+    let variableNodes = this._findNodes(node, ts.SyntaxKind.VariableDeclaration) as ts.VariableDeclaration[];
+    variableNodes = variableNodes.filter(varNode => {
+      if (varNode && varNode.type) {
+        const type  = varNode.type as ts.TypeReferenceNode;
+        if (type.typeName && (type.typeName as ts.Identifier).escapedText) {
+          const text = (type.typeName as ts.Identifier).escapedText;
+          return text === "I18n" || text === "_i18n";
+        }
+      }
+      return false;
+    });
+
+    return variableNodes;
   }
 }
 
