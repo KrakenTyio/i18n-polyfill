@@ -64,7 +64,7 @@ export function xliff2LoadToXml(content: string): XmlMessagesById {
   return xmlMessagesById;
 }
 
-export function xliff2Write(messages: i18n.Message[], locale: string | null, existingNodes?: xml.Node[]): string {
+export function xliff2Write(messages: i18n.Message[], locale: string | null, existingNodes?: xml.Node[], cleanNotes?: boolean): string {
   const visitor = new WriteVisitor();
   const units: xml.Node[] = existingNodes && existingNodes.length ? [new xml.CR(4), ...existingNodes] : [];
 
@@ -72,7 +72,7 @@ export function xliff2Write(messages: i18n.Message[], locale: string | null, exi
     const unit = new xml.Tag(_UNIT_TAG, {id: message.id});
     const notes = new xml.Tag(_NOTES_TAG);
 
-    if (message.description || message.meaning) {
+    if (message.description || message.meaning || message.sources.length) {
       if (message.description) {
         notes.children.push(
           new xml.CR(8),
@@ -86,21 +86,22 @@ export function xliff2Write(messages: i18n.Message[], locale: string | null, exi
           new xml.Tag(_NOTE_TAG, {category: "meaning"}, [new xml.Text(message.meaning)])
         );
       }
+
+      message.sources.forEach((source: i18n.MessageSpan) => {
+        notes.children.push(
+          new xml.CR(8),
+          new xml.Tag(_NOTE_TAG, {category: "location"}, [
+            new xml.Text(
+              `${source.filePath}:${source.startLine}${source.endLine !== source.startLine ? "," + source.endLine : ""}`
+            )
+          ])
+        );
+      });
+
+      notes.children.push(new xml.CR(6));
+      unit.children.push(new xml.CR(6), notes);
+
     }
-
-    message.sources.forEach((source: i18n.MessageSpan) => {
-      notes.children.push(
-        new xml.CR(8),
-        new xml.Tag(_NOTE_TAG, {category: "location"}, [
-          new xml.Text(
-            `${source.filePath}:${source.startLine}${source.endLine !== source.startLine ? "," + source.endLine : ""}`
-          )
-        ])
-      );
-    });
-
-    notes.children.push(new xml.CR(6));
-    unit.children.push(new xml.CR(6), notes);
 
     const segment = new xml.Tag(_SEGMENT_TAG);
 
@@ -110,6 +111,19 @@ export function xliff2Write(messages: i18n.Message[], locale: string | null, exi
 
     units.push(new xml.CR(4), unit);
   });
+
+
+  if (cleanNotes) {
+    units.forEach((unit) => {
+      const element = unit as xml.Tag;
+      if (element.children) {
+        const notes = element.children.find((item) => 'name' in item && item['name'] === _NOTES_TAG);
+        if (notes) {
+          element.children.splice(element.children.indexOf(notes), 1);
+        }
+      }
+    });
+  }
 
   const file = new xml.Tag(_FILE_TAG, {original: "ng.template", id: "ngi18n"}, [...units, new xml.CR(2)]);
 

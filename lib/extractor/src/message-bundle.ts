@@ -1,5 +1,6 @@
 import {PlaceholderMapper, XmlMessagesById} from "../../src/serializers/serializer";
 import * as i18n from "../../src/ast/i18n_ast";
+import * as ml from "../../src/ast/ast";
 import {Node} from "../../src/serializers/xml_helper";
 import {HtmlParser} from "../../src/parser/html";
 import {I18nDef} from "../../src/i18n-polyfill";
@@ -41,11 +42,12 @@ export class MessageBundle {
   }
 
   write(
-    write: (messages: i18n.Message[], locale: string | null, existingNodes?: Node[]) => string,
+    write: (messages: i18n.Message[], locale: string | null, existingNodes?: Node[], cleanNotes?: boolean) => string,
     digest: (message: i18n.Message) => string,
     xmlMessagesById?: XmlMessagesById,
     createMapper?: (messages: i18n.Message) => PlaceholderMapper,
-    filterSources?: (path: string) => string
+    filterSources?: (path: string) => string,
+    cleanNotes: boolean = false
   ): string {
     const messages: {[id: string]: i18n.Message} = {};
     const existingMessages = xmlMessagesById ? Object.keys(xmlMessagesById) : [];
@@ -59,6 +61,12 @@ export class MessageBundle {
           messages[id] = message;
         } else {
           messages[id].sources.push(...message.sources);
+        }
+
+        if (cleanNotes) {
+          messages[id].meaning = '';
+          messages[id].description = '';
+          messages[id].sources = [];
         }
       }
     });
@@ -76,7 +84,7 @@ export class MessageBundle {
       }
       return transformedMessage;
     });
-    return write(msgList, this.locale, existingMessages.map(id => xmlMessagesById[id]));
+    return write(msgList, this.locale, existingMessages.map(id => xmlMessagesById[id]), cleanNotes);
   }
 }
 
