@@ -118,7 +118,7 @@ export class ServiceParser extends AbstractAstParser {
         return false;
       }
       const className: string = parameterType.text;
-      return className === "I18n" || className === "_i18n";
+      return className === "I18n" || className === "I18NService" || className === "_i18n";
     });
 
     if (result) {
@@ -178,7 +178,7 @@ export class ServiceParser extends AbstractAstParser {
         const type  = varNode.type as ts.TypeReferenceNode;
         if (type.typeName && (type.typeName as ts.Identifier).escapedText) {
           const text = (type.typeName as ts.Identifier).escapedText;
-          return text === "I18n" || text === "_i18n";
+          return text === "I18n" || text === "I18NService" || text === "_i18n";
         }
       }
       return false;
